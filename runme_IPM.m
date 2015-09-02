@@ -1,6 +1,8 @@
 function runme_IPM(Site,Species,Type,Fprior)
 % Run CC IPM model
 
+% Github test
+
 % This file describes all the code needed to run the Central Coast IPM
 % model, the order in which things need to be run, etc.
 
