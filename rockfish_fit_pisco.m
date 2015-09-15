@@ -1,8 +1,8 @@
 function rockfish_fit_pisco(Meta_savename,pauseflag)
+
 %updated code as generalized as possible for running the IPM from PISCO
 %rockfish data forward to make projections from PISCO data.
-%KJNickols and JWWhite 01.04.13
-% Updated by JWW Aug 2014
+% KJ Nickols and JW White 2015
 
 % Load in metadata
 load(Meta_savename)
@@ -20,16 +20,19 @@ if ~isnan(Tpre) % for pre-2007 runs
 T = 1:length([Tpre(:); Tdata(:)]);
 else
 T = 1:length(Tdata(:));
-end % isnan Tpre
+end % end if ~isnan(Tpre)
 
-%specify x values for size for model, here we're going from 0cm to 100cm
-%with 500 values in between
+% format integration mesh
 meshsize = Meta.IPM.meshsize;
 meshmin = Meta.IPM.meshmin;
 meshmax = Meta.IPM.meshmax;
 x = linspace(meshmin,meshmax,meshsize);
 meshdiff = diff(x(1:2));
 edges = x - meshdiff/2;
+
+% get weighting vector for Simpson's integration
+dy=x(2)-x(1);
+Sy=makeSimpVec(dy,meshsize);
 
 %load file that has size data in it from PISCO
 load(Meta.data_savename,'D_str','Species_Names','Years')
@@ -48,7 +51,6 @@ N = IPM_histo(D_str.(Species_Names{1}),Years,Site_Names,edges);
 for i = 1:length(Years)
     for j = 1:length(Site_Names)
         NT(j,i) = D_str.(Species_Names{1}).(Site_Names{j})(i).data.numtrans;
-%        N(:,j,i) = N(:,j,i)./NT;
     end
 end
 if isnan(Tpre) % if it is a post-2007 run
@@ -69,7 +71,6 @@ N = N(:,:,OKyears);
 % specify ogive for observations - don't see fish that are too large
 % b/c of ontogenetic migration
 Ogive_b = Meta.ogive;
-%Ogive = 1./(1 + 1./exp(Ogive_b(1) + Ogive_b(2).*x)); % probability of observation in the kelp forest
 if isnan(Ogive_b(1)) % if there is no ogive
     Ogive = ones(size(x));
 else
@@ -79,7 +80,7 @@ end
 %specify max size of recruits in data (YOY)
 Rsize = Meta.recruits.Rsize;
 
-%simulate recruitment from distribution based on data 
+% Obtain recruitment statistics
 
 %get sum of recruits for each year per site. 
 if isnan(Meta.Rprior) % if this is a pre-2007 run
@@ -103,17 +104,12 @@ sig1 = Meta.Rprior(2);
 Rfact = Meta.Rfact;
 end % end if isnan Meta.Rprior
 
-%make vector of recruits to add in each year, this will be multiplied by
+%make size density function of recruits to add in each year, this will be multiplied by
 %the magnitude calculated above. Specify mean of pdf for size according to
 %specific species, specify sd too.
-
-R = normpdf(x,Meta.recruits.meansize,Meta.recruits.sdsize)'; %Average size of recruit is 4, with sd = 1
+R = normpdf(x,Meta.recruits.meansize,Meta.recruits.sdsize)'; 
                          
-%scale R so integrates appropriately
-dy=x(2)-x(1);
-Sy=makeSimpVec(dy,meshsize);
-%R = R./(Sy*R).*sum(R); %rescale R so integrates correctly
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Do MCMC
 M = Meta.MCMC.M;
 chains = Meta.MCMC.chains;
@@ -123,14 +119,14 @@ mc_str = struct([]); % structure to hold results
 for c = 1:chains
     
     % Initial parameter vector
-    % F1, F2, Recruitment1, Recruitment2, sigma_o, sigma_p
-    prior_vec = [Meta.Fprior(1,1),Meta.Fprior(2,1), mu1, repmat(mu1,1,length(Tdata)), 1e-1, 1e-1];
+    % F1, F2, Recruitment1, Recruitment2, sigma_p
+    prior_vec = [Meta.Fprior(1,1),Meta.Fprior(2,1), mu1, repmat(mu1,1,length(Tdata)), 1e-1];
     parm_vec = prior_vec;
-    parmSD = [1,1, sig1, repmat(sig1,1,length(Tdata)), NaN, NaN]; % these are just used for the candidate generation
-    CV = repmat(1./([0.5 1 5:3:40])',[1,length(parm_vec)]);
+    parmSD = [1,1, sig1, repmat(sig1,1,length(Tdata)), NaN]; % these are just used for the candidate generation
+    CV = repmat(1./([0.5 1 5:3:40])',[1,length(parm_vec)]); % CVs used for delayed rejection
     stepmax = size(CV,1);
 
-    parm_gam1 = 2; % inverse gamma hyperparameter for process & observation error. Low confidence.
+    parm_gam1 = 2; % inverse gamma hyperparameter for process error. Low confidence.
 
     k = 1; % parameter counter
     kk = 1; % delayed rejection counter
@@ -154,7 +150,7 @@ for c = 1:chains
     
     end % end loop over s
     
-    % if we do need to do the runs for checking Q 
+    % This is a little subroutine for estimating the value of Q required:
     doQruns = false;
     if doQruns
         
@@ -176,15 +172,16 @@ for c = 1:chains
     % Add prior calculation:
     PriorL(1) = log(max(realmin,normpdf(log(parm_vec_tmp(1)),log(Meta.Fprior(1,1)),Meta.Fprior(1,2)))); % F1
     PriorL(2) = log(max(realmin,normpdf(log(parm_vec_tmp(2)),log(Meta.Fprior(2,1)),Meta.Fprior(2,2)))); % F2
-    PriorL(3) = sum(log(max(realmin,normpdf(parm_vec_tmp(3:(3+length(Tdata))),mu1,sig1))));
-    PriorL(4) = sum(log(max(realmin,gampdf(1./parm_vec_tmp(end-1:end),parm_gam1,1./prior_vec(end-1:end)./(parm_gam1-1)))));
+    PriorL(3) = sum(log(max(realmin,normpdf(parm_vec_tmp(3:(3+length(Tdata))),mu1,sig1)))); % R
+    PriorL(4) = sum(log(max(realmin,gampdf(1./parm_vec_tmp(end-1:end),parm_gam1,1./prior_vec(end-1:end)./(parm_gam1-1))))); % process error
     
     L(1) = sum(Ltmp)+sum(PriorL);
     
+    % MCMC iterations
     for m = 1:M
         
         if mod(m,1000)==0
-            disp(strcat(['m = ',num2str(m)]))
+            disp(strcat(['m = ',num2str(m)])) % counter
         end
         
         next_step = false;
@@ -202,8 +199,7 @@ for c = 1:chains
         
         cand_vec(1:end-2) = abs(cand_vec(1:end-2)); % can't have a negative fishing rate or recruitment!
         
-       
-        
+        % Loop over each site and calculate likelihood
         Ltmp = nan(1,length(Site_Names));
         for s = 1:length(Site_Names)
         
@@ -218,27 +214,21 @@ for c = 1:chains
           % Add prior calculation:
         PriorL(1) = log(max(realmin,normpdf(log(parm_vec_tmp(1)),log(Meta.Fprior(1,1)),Meta.Fprior(1,2)))); % F1
         PriorL(2) = log(max(realmin,normpdf(log(parm_vec_tmp(2)),log(Meta.Fprior(2,1)),Meta.Fprior(2,2)))); % F2
-        PriorL(3) = sum(log(max(realmin,normpdf(parm_vec_tmp(3:(3+length(Tdata))),mu1,sig1))));
-        PriorL(4) = sum(log(max(realmin,gampdf(1./parm_vec_tmp(end-1:end),parm_gam1,1./prior_vec(end-1:end)./(parm_gam1-1)))));
+        PriorL(3) = sum(log(max(realmin,normpdf(parm_vec_tmp(3:(3+length(Tdata))),mu1,sig1)))); % R 
+        PriorL(4) = sum(log(max(realmin,gampdf(1./parm_vec_tmp(end-1:end),parm_gam1,1./prior_vec(end-1:end)./(parm_gam1-1))))); % Process error
     
-        L_cand = sum(Ltmp)+sum(PriorL);
-        
-        if m > 50
-       % keyboard
-        end
+        L_cand = sum(Ltmp)+sum(PriorL); % Candidate likelihood 
             
-        % M-H
+        % Metropolis-Hastings step
         if ~isnan(L_cand) && ~isinf(L_cand)
             MH_prob = min(1,exp(L_cand-L(kk)));
-            
         else
             MH_prob = 0;
         end
-        
         K = MH_prob > rand;
         
-        % DR
-        if K
+        % Delayed rejection step
+        if K % accept proposal
             
         parm_vec(kk+1,:) = cand_vec;
         L(kk+1) = L_cand;
@@ -290,7 +280,7 @@ for s = 1:length(Site_Names)
 end
 keyboard
 end
-%keyboard
+
 
 
 

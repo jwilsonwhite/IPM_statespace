@@ -1,18 +1,23 @@
 function postproc_pisco_rockfish_fit(Meta_savename)
 
-% Examine posterior of an MCMC run
-%Dir ='runs_for_publication_pre2007_July2015/';
-%Dir = 'mockdata_fits_June2015/'; % for mockdata runs
-%Dir = '';
-Dir = 'post2007_runs_July2015/';
+% This function examines the  posterior of an MCMC run, and makes a number
+% of plots. It has some options to make plots for either simulated data
+% runs or Pt Lobos data runs for the White et al. Plos One paper.
 
-% Load in metadata
-load(strcat(Dir,Meta_savename))
-
-load(strcat(Dir,Meta.data_savename),'D_str','Species_Names','Years')
+% What plots to make?
 Plotchains = true;
 Plotfinal = true;
 saveplots = false;
+
+% Choose the directory to be used, depending on what type of run is
+% analyzed
+Dir ='runs_for_publication_pre2007_July2015/';
+%Dir = 'mockdata_fits_June2015/'; % for mockdata runs
+%Dir = 'post2007_runs_July2015/'; % for post-2007 runs
+
+% Load in metadata
+load(strcat(Dir,Meta_savename))
+load(strcat(Dir,Meta.data_savename),'D_str','Species_Names','Years')
 
 plot_savename = Meta.fit_savename(1:end-4); % trim off '.mat'
 timeseries_plotname = strcat(plot_savename,'.eps');
@@ -27,6 +32,9 @@ x = linspace(meshmin,meshmax,meshsize);
 meshdiff = diff(x(1:2));
 edges = x - meshdiff/2;
 
+dy=x(2)-x(1);
+Sy=makeSimpVec(dy,meshsize);
+
 %timescale to run model
 Tdata = Meta.Tdata; % timespan of data
 
@@ -38,16 +46,10 @@ T = 1:length([Tpre(:); Tdata(:)]);
 end
 
 %get data into a histogram
-Site_Names = Meta.Sites
+Site_Names = Meta.Sites;
 
 N = IPM_histo(D_str.(Species_Names{1}),Years,Site_Names,edges);
-%divide total fish numbers by number of transects
-%for i = 1:length(Years)
-%    for j = 1:length(Site_Names)
-%        NT = D_str.(Species_Names{1}).(Site_Names{j})(i).data.numtrans;
-%        N(:,j,i) = N(:,j,i)./NT;
-%    end
-%end
+
 % strip out the years we don't need
 OKyears = false(length(Years),1);
 for i = 1:length(Years)
@@ -56,10 +58,8 @@ for i = 1:length(Years)
     end
 end
 N = N(:,:,OKyears);
-% specify ogive for observations - don't see fish that are too large
-% b/c of ontogenetic migration
+
 Ogive_b = Meta.ogive;
-%Ogive = 1./(1 + 1./exp(Ogive_b(1) + Ogive_b(2).*x)); % probability of observation in the kelp forest
 if isnan(Ogive_b(1)) % if there is no ogive
     Ogive = ones(size(x));
 else
@@ -87,31 +87,20 @@ R1lnm = log(R1m+Rfact);
 mu1 = mean(R1lnm);
 sig1 = std(R1lnm);
 
-%make vector of recruits to add in each year, this will be multiplied by
-%the magnitude calculated above. Specify mean of pdf for size according to
-%specific species, specify sd too.
-
 R = normpdf(x,Meta.recruits.meansize,Meta.recruits.sdsize)'; %Average size of recruit is 4, with sd = 1
                          
-%scale R so integrates appropriately
-dy=x(2)-x(1);
-Sy=makeSimpVec(dy,meshsize);
-%R = R./(Sy*R).*sum(R); %rescale R so integrates correctly
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 load(strcat(Dir,Meta.fit_savename))
-%load(strcat(Meta.fit_savename))
 
 chains = length(mc_str);
-%if ~exist('mc_str(1).NT','var')
-%    NT = ones(length(Site_Names),length(Tdata));
-%else
+
 if strcmp(Dir,'mockdata_fits_June2015/') % if doing mockdata
     NT = ones(1,length(T)); 
 else
 NT = mc_str(1).NT;
 NT = NT(:,1:length(Meta.Tdata));
-%NT = [zeros(size(NT,1),length(Meta.Tpre)),NT];
 end
 
 
@@ -138,28 +127,24 @@ if Plotchains
     for c = 1:chains
         plot(mc_str(c).L(Burn(c):end),Col{c})
     end
-    
-    
-end
+end % end if Plotchains
 
 if Plotfinal
-   % figure(2)
     figure(2)
     set(gcf,'units','cent','position',[5,5,17.4, 15])
     clf
    Pvec = [];
-   for c = 2; %1:chains
+   for c = 2; 
        Pvec = [Pvec; mc_str(c).parm_vec(Burn(c):end,:)];
    end
    meanP=mean(Pvec(1:end,:));
-
    
 if strcmp(Meta_savename(6),'P') % Point Lobos
 PlotSites = [1, 3]; % which sites to plot? 
 
 % which years to plot
 if ~isnan(Meta.Tpre) % pre2007 runs
-        Years = [10 17 18];%9+(1:NumY);
+        Years = [10 17 18];
 else % post2007 runs
         Years = 2:4;
 end
@@ -170,7 +155,7 @@ PlotSites = [1, 3]; % which sites to plot?
     
 % which years to plot
 if ~isnan(Meta.Tpre) % pre2007 runs
-        Years = [12 17 18];%9+(1:NumY);
+        Years = [12 17 18];
 else % post2007 runs
         Years = 4:6;
 end
@@ -206,12 +191,11 @@ end % end switch over site
         
    [L(s), Npred, Nact] = do_IPM(meshsize,x,dy,Sy,meanP_tmp,Meta.fixparm,Rfact,R,squeeze(N(:,s,:)),T,Tpre,Ogive,Meta,NT(s,:),Site_Names{s});
 
-
    Predicted(1).(Site_Names{s}).Npred = Npred;
    Predicted(1).(Site_Names{s}).Likelihood = L;
 
 
-NumY = 3; %length(Tdata); % how many years to plot
+NumY = 3; % how many years to plot
 
 Panel = 1:(NumY*length(PlotSites));
 Panel = reshape(Panel,length(PlotSites),NumY)';
@@ -234,8 +218,6 @@ bar(x,Nact(:,Years(y))./diff(x(1:2)),'facecolor',[0.6 0.6 0.6],'edgecolor',[0.6 
 end
 plot(x,Npred(:,Years(y)).*NT(s,Years(y)-length(Tpre)),'k','linewidth',1) 
 set(gca,'tickdir','out','ticklength',[0.02 0.02],'fontsize',FS)
-%set(gca,'ylim',[0 15])
-%set(gca,'ylim',[0 70])
 set(gca,'xlim',[0 60])
 if y == 1; title(Site_Names{s},'fontsize',FS); end
 xlabel('Length (cm)','fontsize', FS)
@@ -257,7 +239,7 @@ F_mode = F_mode(1); % in case there is a tie
 Post(1).F_mode = F_mode;
 Post(1).F_mean = mean(Pvec(:,2));
 Post(1).F_median = median(Pvec(:,2));
-Post(1).F_std = std(Pvec(:,2))
+Post(1).F_std = std(Pvec(:,2));
 
 % Plot the histogram of historical F
 figure(10)
@@ -267,15 +249,11 @@ hold on
 hist(Pvec(:,2),50)
 plot([F_mode,F_mode],[0 2e3],'k-')
 plot([Meta.Fprior(2,1),Meta.Fprior(2,1)],[0 2e3],'k--')
-%set(gca,'xtick',0:0.05:10,'tickdir','out','ticklength',[0.02 0.02])
-%set(gca,'ylim',[0 1500])
 xlabel('F')
 ylabel('Frequency')
 if saveplots
 print(F_histo_plotname,'-depsc2','-tiff')
 end
-
-
 % Save post-burn chains & posterior of everything; final distribution of Npred; save F posterior:
 post_savename = Meta.fit_savename(1:end-4); % trim off '.mat'
 post_savename = strcat(post_savename,'_postproc.mat');

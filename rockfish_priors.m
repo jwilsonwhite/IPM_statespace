@@ -57,7 +57,6 @@ M = 0.2;  % natural mortality
 H = Gopher_90s; %harvest fraction
 F0 = 0.1; % initial guess at F
 
-
 for h = 1:length(H)
     Fx = @(F) abs((1-exp(-(F+M)))*(F/(F+M))-H(h)); % function to be minimized
 F_Gopher_90s(h) = fminsearch(@(f) Fx(f), F0); % returns the value of F
@@ -70,9 +69,19 @@ for h = 1:length(H)
 F_Gopher_00s(h) = fminsearch(@(f) Fx(f), F0); % returns the value of F
 end
       
+mean(F_Blue_90s)
+std(F_Blue_90s)
 
-keyboard
-          
+mean(F_Blue_00s)
+std(F_Blue_00s)
+
+mean(F_Gopher_90s)
+std(F_Gopher_90s)
+
+mean(F_Gopher_00s)
+std(F_Gopher_00s)
+
+
           
               
               
