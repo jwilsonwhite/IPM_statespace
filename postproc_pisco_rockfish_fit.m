@@ -7,7 +7,7 @@ function postproc_pisco_rockfish_fit(Meta_savename)
 % What plots to make?
 Plotchains = true;
 Plotfinal = true;
-saveplots = false;
+saveplots = true;
 
 % Choose the directory to be used, depending on what type of run is
 % analyzed
@@ -105,9 +105,9 @@ end
 
 
 if strcmp(Dir,'mockdata_fits_June2015/')
-Burn = [1e3 1e3 1e3];
+Burn = [2.5e3 2.5e3 2.5e3];
 else
-Burn = [3e3 3e3 3e3];
+Burn = [5e3 5e3 5e3];
 end
 Col = {'r','b','k'};
 
@@ -149,6 +149,10 @@ else % post2007 runs
         Years = 2:4;
 end
 
+elseif strcmp(Meta_savename(6),'m') % simulated data
+    PlotSites = 1;
+    Years = [10, 17, 18];
+
 elseif strcmp(Meta_savename(6),'B')  % Big Creek
   
 PlotSites = [1, 3]; % which sites to plot? 
@@ -182,7 +186,7 @@ end
 end % end switch over site
    
  Predicted = struct();
- %Site_Names
+
    for s = 1:length(Site_Names)
 
        % switch off fishing for pre-existing MPAs
@@ -202,7 +206,6 @@ Panel = reshape(Panel,length(PlotSites),NumY)';
 FS = 8;
 
 if any(PlotSites==s) % if we are in one of the sites to be plotted
-    
     
 for y = 1:NumY
 subplot(NumY,length(PlotSites),Panel(y,find(PlotSites==s)))
@@ -251,6 +254,9 @@ plot([F_mode,F_mode],[0 2e3],'k-')
 plot([Meta.Fprior(2,1),Meta.Fprior(2,1)],[0 2e3],'k--')
 xlabel('F')
 ylabel('Frequency')
+ylim([0 400])
+xlim([0.08 0.3])
+set(gca,'tickdir','out','ticklength',[0.015 0.015])
 if saveplots
 print(F_histo_plotname,'-depsc2','-tiff')
 end

@@ -8,7 +8,7 @@ load(meta_savename); % load in metadata needed to get species, sites, etc.
 % site
 if ~exist(Meta.PISCO_filename,'file') % if the file doesn't exist
 Dir = 'PISCO_data_2015/';
-File = 'PISCO_FISH_v2.csv'; % V2 lacks headers, the original has headers 
+File = 'PISCO_FISH_reduced.csv'; % this version lacks headers and only has data relevant to the PLoS One paper 
 
 fid = fopen(strcat([Dir,File]));
 D = textscan(fid, strcat(['%s %s ',...% campus,  method
