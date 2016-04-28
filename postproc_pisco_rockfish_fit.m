@@ -2,7 +2,7 @@ function postproc_pisco_rockfish_fit(Meta_savename)
 
 % This function examines the  posterior of an MCMC run, and makes a number
 % of plots. It has some options to make plots for either simulated data
-% runs or Pt Lobos data runs for the White et al. Plos One paper.
+% runs or Pt Lobos data runs for the White et al. Ecol. Appl. paper.
 
 % What plots to make?
 Plotchains = true;
@@ -11,8 +11,8 @@ saveplots = true;
 
 % Choose the directory to be used, depending on what type of run is
 % analyzed
-Dir ='runs_for_publication_pre2007_July2015/';
-%Dir = 'mockdata_fits_June2015/'; % for mockdata runs
+%Dir ='runs_for_publication_pre2007_July2015/';
+Dir = 'mockdata_fits_June2015/'; % for mockdata runs
 %Dir = 'post2007_runs_July2015/'; % for post-2007 runs
 
 % Load in metadata
@@ -131,7 +131,7 @@ end % end if Plotchains
 
 if Plotfinal
     figure(2)
-    set(gcf,'units','cent','position',[5,5,17.4, 15])
+    set(gcf,'units','cent','position',[5,5,9, 15])
     clf
    Pvec = [];
    for c = 2; 
@@ -215,16 +215,46 @@ sum(Npred(:,Years(y))*diff(x(1:2)).*NT(s,Years(y)-length(Tpre)))
 
 if strcmp(Dir,'mockdata_fits_June2015/') % if doing mockdata:
 % data was binned by 3 cm, but treated as continuous
-bar(x,Nact(:,Years(y))./3,3,'facecolor',[0.6 0.6 0.6],'edgecolor',[0.6 0.6 0.6])
+bar(x,Nact(:,Years(y))./(3/diff(x(1:2))),(3/diff(x(1:2))),'facecolor',[0.6 0.6 0.6],'edgecolor',[0.6 0.6 0.6])
+%bar(x,Nact(:,Years(y))./(diff(x(1:2))),(diff(x(1:2))),'facecolor',[0.6 0.6 0.6],'edgecolor',[0.6 0.6 0.6])
+
+%keyboard
 else % real data
-bar(x,Nact(:,Years(y))./diff(x(1:2)),'facecolor',[0.6 0.6 0.6],'edgecolor',[0.6 0.6 0.6])
+bar(x,Nact(:,Years(y))./diff(x(1:2)),(diff(x(1:2))),'facecolor',[0.6 0.6 0.6],'edgecolor',[0.6 0.6 0.6])
 end
+
+% Aggregate IPM density to make it comparable to the scale of the data histogram
+if strcmp(Dir,'mockdata_fits_June2015/') % if doing mockdata:
+   % Binned by 3 cm
+   xt = 2.5:3:max(x); % these are the edges that will create bins centered on the mock data bins
+
+   
+   % Translation matrix:
+   xm = repmat(x(:)',[length(xt),1]);
+   em = repmat(xt(:),[1,length(x)]);
+   em2 = [zeros(1,length(x));em(1:end-1,:)];
+   Tm = xm > em2 & xm <= em;
+   
+   % Do the translation:
+   Npred2 = Tm*Npred(:,Years(y)).*NT(s,Years(y)-length(Tpre));
+   
+   % Plot the translated density:
+ %  plot(xt-diff(xt(1:2)/2),Npred2,'ko')
+   
+end
+    
+% Plot the raw density:
 plot(x,Npred(:,Years(y)).*NT(s,Years(y)-length(Tpre)),'k','linewidth',1) 
 set(gca,'tickdir','out','ticklength',[0.02 0.02],'fontsize',FS)
 set(gca,'xlim',[0 60])
+
+if strcmp(Dir,'mockdata_fits_June2015/') 
+set(gca,'ylim',[0 20])
+end
+
 if y == 1; title(Site_Names{s},'fontsize',FS); end
 xlabel('Length (cm)','fontsize', FS)
-ylabel('Relative frequency','fontsize',FS)
+ylabel('Density','fontsize',FS)
 end % end loop over years for plotting
 if saveplots
 print(timeseries_plotname,'-depsc2','-tiff')
@@ -247,7 +277,7 @@ Post(1).F_std = std(Pvec(:,2));
 % Plot the histogram of historical F
 figure(10)
 clf
-set(gcf,'units','cent','position',[8 5 8.4 4])
+set(gcf,'units','cent','position',[14 5 8.4 4])
 hold on
 hist(Pvec(:,2),50)
 plot([F_mode,F_mode],[0 2e3],'k-')

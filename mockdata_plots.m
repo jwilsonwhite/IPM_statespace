@@ -200,7 +200,6 @@ for f = 1:3
         plot(i,mean(Parm),'ko')
         plot([i i],quantile(Parm,[0.025 0.975]),'k-')
         
-        
     end % end i
     
 set(gca,'xlim',[0 11],'ylim',[-0.01 0.08])
