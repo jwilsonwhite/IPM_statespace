@@ -1,8 +1,8 @@
 # IPM_statespace
 State-space integral projection models
 
-This is the code described in White et al., Plos One 2015. S
-State-space IPMs for central coast rockfish data.
+This is the code described in White et al., Ecological Applications (2016)
+Fitting state-space integral projection models to time series data.
 All code is written for Matlab.
 
 There are two runme files that are the primary wrappers for all the code.

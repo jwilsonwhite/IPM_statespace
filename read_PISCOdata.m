@@ -86,7 +86,7 @@ for s = 1:length(Species_Names)
         transects = zeros(length(Months),1);
     for m = 1:length(Months)
         OKsgym = OKgy & OKsp & Monthcol == Months(m);
-        
+
         % count up number of transects
         Side = unique(Sidecol(OKsgym)); % total number of sides in this month
         for sd = 1:length(Side)
@@ -103,7 +103,7 @@ for s = 1:length(Species_Names)
         d_str(1).TL = Fish_TLcol(OKsgym);
         d_str(1).Month = Months(m);
         else
-            
+            keyboard
             extraCount = Countcol(OKsgym);
             extraTL = Fish_TLcol(OKsgym);
             extraMonth = Months(m);
