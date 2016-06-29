@@ -1,3 +1,4 @@
+10.5281/zenodo.56574
 # IPM_statespace
 State-space integral projection models
 
