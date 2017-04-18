@@ -261,7 +261,7 @@ for f = 1:3
         Sname = strcat('mockdata_May2015/SMYS_mockdata_F',Fs{f},Savename_Base2,'_R',num2str(i),'.mat');
         load(Sname)
 
-        R = Parm(:,1:end-2) - repmat(log(RF.Ractual(9:end))',[size(Parm,1),1]); % difference between actual and estimated value
+        R = Parm(:,2:end-2) - repmat(log(RF.Ractual(10:end))',[size(Parm,1),1]); % difference between actual and estimated value
         
         subplot(2,1,1)
         hold on
