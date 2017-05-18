@@ -17,7 +17,7 @@ if ~isnan(Tpre)
 F(1:length(Tpre)) = F1; % if Tpre = NaN, then this is a post 2007 run and we ignore this step
 end 
 R1 = exp(cand_vec(3))-Rfact; % recruitment in pre-data period
-R2 = exp(cand_vec(4:end-2))-Rfact; % Rfact is log(0) correction factor
+R2 = exp(cand_vec(4:end-1))-Rfact; % Rfact is log(0) correction factor
 R = max(0,[repmat(R1,1,length(Tpre)), R2]); % constant recruitment in pre-data period, then R2. Be sure to restrict to > 0
 
 Q = Meta.Q; % number of particles
