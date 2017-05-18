@@ -97,12 +97,24 @@ R = normpdf(x,Meta.recruits.meansize,Meta.recruits.sdsize)'; %Average size of re
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load in the MCMC results
 
-if exist('Chains','var')
-    chai
-
+if exist('Chains','var') && ~isnan(Chains)
+    chains = Chains;
+   % loop over runs & combine mc_str structure files
+   fit_savename_tmp = Meta.fit_savename(1:end-4);
+   mc_str_tmp = struct();
+   for c = 1:length(Chains)
+       load(strcat(Dir,fit_savename_tmp,'_',num2str(c),'.mat'))
+       if c == 1 
+       mc_str_tmp = mc_str;
+       else
+       mc_str_tmp(c) = mc_str;
+       end
+   end
+   mc_str = mc_str_tmp;
+else
 load(strcat(Dir,Meta.fit_savename))
-
 chains = length(mc_str);
+end
 
 if strcmp(Dir,'mockdata_fits_June2015/') % if doing mockdata
     NT = ones(1,length(T)); 
@@ -137,13 +149,19 @@ if Plotchains
     end
 end % end if Plotchains
 
+% Plot final posteriors, and compile the posteriors into a single matrix,
+% Pvec.
+% Also, calculate convergence statistics to ensure proper convergence.
 if Plotfinal
     figure(2)
     set(gcf,'units','cent','position',[5,5,9, 15])
     clf
-   Pvec = [];
-   for c = 2; 
+   Pvec = []; Lvec = [];
+   for c = 1:chains 
+       Ltmp = 
+       Lvec = [Lvec; mc_str(c).L(:)];
        Pvec = [Pvec; mc_str(c).parm_vec(Burn(c):end,:)];
+       vLwithin(c) = var(mc_str(c).L(burn:end)
    end
    meanP=mean(Pvec(1:end,:));
    

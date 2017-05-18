@@ -149,15 +149,26 @@ if Plotchains
     end
 end % end if Plotchains
 
+% Plot final posteriors, and compile the posteriors into a single matrix,
+% Pvec.
+% Also, calculate convergence statistics to ensure proper convergence.
 if Plotfinal
     figure(2)
     set(gcf,'units','cent','position',[5,5,9, 15])
     clf
-   Pvec = [];
-   for c = 2; 
+   Pvec = []; Lvec = [];
+   for c = 1:chains 
+       Ltmp = mc_str(c).L(Burn(c):end);
+       Lvec = [Lvec; Ltmp(:)];
        Pvec = [Pvec; mc_str(c).parm_vec(Burn(c):end,:)];
+       vLwithin(c) = var(Ltmp);
    end
    meanP=mean(Pvec(1:end,:));
+   
+   Rhat = sqrt(var(Lvec)/mean(vLwithin);
+   if Rhat > 1.1 % there might be a convergence problem
+       warning('Rhat > 1.1. Check chains for convergence.')
+   end
    
 if strcmp(Meta_savename(6),'P') % Point Lobos
 PlotSites = [1, 3]; % which sites to plot? 
