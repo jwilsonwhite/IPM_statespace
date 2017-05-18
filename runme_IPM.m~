@@ -50,11 +50,7 @@ read_PISCOdata(Meta.savename)
 % Step 2: Fit the data to obtain historical values of F
 pauseflag = false; % change this if you want to pause the fitting routine for debugging
 
-Chain = NaN; % if you are calling rockfish_fit_pisco directly from this file, 
-             % it will run with the default number of chains specified in
-             % the IPM_parameters file. If you want to manually parallelize
-             % the chains, call rockfish_fit_pisco separately on the
-             % command line and specify which Chain you are running.
+Chain = NaN; % if you are calling rockfish_f
 rockfish_fit_pisco(Meta.savename,Chain,pauseflag)
 
 % calls: IPM_histo.m (to convert count data into histogram)

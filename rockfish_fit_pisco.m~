@@ -278,12 +278,8 @@ mc_str(c).NT = NT;
 end % end loop over chains
 
 fit_savename = Meta.fit_savename;
-% if being run as a single chain out of multiple chains, then construct a
-% filename that indicates the chain being run
-if exist('Chain','var')
-    fit_savename = strcat(fit_savename(1:end-4),'_',num2str(Chain),'.mat');
-end
-save(fit_savename,'mc_str')
+if exist('Chain','var'
+save(Meta.fit_savename,'mc_str')
 
 % If you want to pause the code to look at the fit
 if ~exist('pauseflag','var')
