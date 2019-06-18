@@ -1,0 +1,28 @@
+This is the data and code described in Nickols et al., Journal of Applied Ecology (2019) Setting ecological expectations 
+for adaptive management of marine protected areas. These codes build off of data and code presented in White et al., Ecological 
+Applications (2016) Fitting state-space integral projection models to time series data. All code is written in Matlab. 
+
+Found in IPM_statespace from White et al. 2016:
+The original PISCO data (for selected species and sites) in in directory PISCO_data_2015. 
+The fits to those data are in runs_for_publication_pre2007_July2015. IPM_parameters.m gives the parameters for the model runs.  
+
+Specific to Nickols et al. 2019: 
+runme_IPMfrwd.m is the driver file for reading in PISCO monitoring data (read_PISCOdata.m), finding the stable size distribution 
+(SSD: findSSD.m), running the IPM forward from the SSD under fishing and fishing scenarios with constant and random recruitment 
+(rockfish_frwdproject_SSD), and running the IPM forward from the initial size distribution at the time of MPA implementation 
+(rockfish_frwdproject). 
+
+ROC_Curves_SMYS.m computes ROC curves for each site for output from rockfish_frwdproject_SSD.m and rockfish_frwdproject.m, calls 
+ROC.m
+
+Read_PISCOdata_zone2.m and IPM_histo_per_zone2.m are used to calculate data points with error bars for reference and MPA sites 
+in Figure 3 in Nickols et al. 2019. During each sampling event at a site, fish are counted along transects divided into sites, 
+sides, zones, and transects. We computed means per zone and their associated standard deviation. See piscoweb.org for information 
+on how monitoring sites are sampled. zone_error.m and zone_error_ref.m use IPM_histo_per_zone2.m to provide the means and errors bars 
+for the figure. 
+
+
+
+
+
+
