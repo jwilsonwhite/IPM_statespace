@@ -1,0 +1,370 @@
+---
+title: "Fquality_CJFAS"
+author: "Lauren Yamane"
+date: "6/28/2019"
+output: html_document
+---
+---
+title: "Fquality"
+author: "Lauren Yamane"
+date: "8/18/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(readxl)
+library(cowplot)
+library(colorspace)
+```
+Measures of F estimate quality from the SSIPM:  inaccuracy (absolute value of mean value for the 10 fits minus the true value of F.  #Old: note that for inaccuracy, the F=0 estimates were left raw rather than transformed with the above equation)  
+
+```{r fquality}
+Fstd_all <- read_excel("/R_stuff/R_Research/MPAs/Fstd_all.xlsx")
+Fstd_all$species  <- with(Fstd_all, reorder(species, M))
+
+#For case where bias is not calculated as an absolute value
+#pal <- choose_palette()
+#pal(17)
+Fest_noabs<- read_excel("/R_stuff/R_Research/MPAs/Fest_noabs.xlsx")
+Fest_noabs$species <- with(Fest_noabs, reorder(species, M))
+Fest_noabs <- Fest_noabs 
+  
+Fest_noabsgg <- ggplot(data = Fest_noabs, aes(F_values, F_est, color = species))
+Fest_noabsgg <- Fest_noabsgg + 
+  geom_line() + 
+  labs(x=expression(paste("True fishing mortality rate (", y^-1, ")")), y="Bias") + theme(legend.title=element_blank()) +
+  geom_hline(aes(yintercept=0), linetype = "dashed") +
+  stat_summary(fun.y = "mean", colour = "black", size = 1.3, geom = "line") +
+  scale_color_manual(values = pal(17))
+
+# To make a plot with F estimate for the true value of F=0.1 on the y-axis
+Fest_noabs_true <- read_excel("/R_stuff/R_Research/MPAs/Fest_noabs_2018JAN10.xlsx") ### continued below (see Combined)
+```
+
+```{r concatenated_data}
+mean_stats <- select(Fest_noabs, -k_M_F) %>% group_by(species) %>% summarise_all(., funs(mean, sd))
+
+sd_stats <- select(Fstd_all, -k_M_F) %>% group_by(species) 
+```
+These calculations are for the no absolute value analyses, in particular for analyses focused on F = 0.1 only, including theta.  Theta is the angle between the current population vector (in the MPA case, an SAD that is truncated by fishing), and the future SAD population vector (in the MPA case, for the unfished SAD).  See theta_for_Fquality.Rmd.
+
+```{r no_absvalue_analyses_sd}
+#only for F=0.1 ###### start here
+sd_stats <- sd_stats %>% filter(F_values==0.1) #%>% group_by(species) 
+sd_stats$F_est_mean <- round(as.numeric(sd_stats$F_est), digits = 3)
+sd_stats$k <- round(as.numeric(sd_stats$k), digits = 2)
+sd_stats$M <- round(as.numeric(sd_stats$M), digits = 2)
+sd_stats$k_M <- round(as.numeric(sd_stats$k_M), digits = 2)
+sd_stats$Lfish_Lmat <- round(as.numeric(sd_stats$Lfish_Lmat), digits = 2)
+sd_stats$Lfish_k <- round(as.numeric(sd_stats$Lfish_k), digits = 2)
+sd_stats$Lfish_Linf <- round(as.numeric(sd_stats$Lfish_Linf), digits = 2)
+sd_stats$AgeLfish_AgeHalfsat <- round(as.numeric(sd_stats$AgeLfish_AgeHalfsat), digits = 2)
+#sd_stats$species <- as.factor(sd_stats$species)
+# add theta calcuations for open population, R = 50 to the data frame after running theta_for_Fquality.Rmd
+sd_stats <- left_join(sd_stats, openpop_theta, by = "species")
+sd_stats$species  <- with(sd_stats, reorder(species, M))
+sd_stats <- sd_stats %>% mutate(., theta_degrees = theta *(180/pi))
+```
+```{r no_absvalue_analyses_bias}
+### For case when bias is not calculated as an absolute value
+mean_stats_noabs <- filter(Fest_noabs, F_values==0.1) %>% group_by(species) 
+mean_stats_noabs$F_est <- round(as.numeric(mean_stats_noabs$F_est), digits = 2)
+mean_stats_noabs$k <- round(as.numeric(mean_stats_noabs$k), digits = 2)
+mean_stats_noabs$M <- round(as.numeric(mean_stats_noabs$M), digits = 2)
+mean_stats_noabs$k_M <- round(as.numeric(mean_stats_noabs$k_M), digits = 2)
+mean_stats_noabs$Lfish_Lmat <- round(as.numeric(mean_stats_noabs$Lfish_Lmat), digits = 2)
+mean_stats_noabs$Lfish_Linf <- round(as.numeric(mean_stats_noabs$Lfish_Linf), digits = 2)
+mean_stats_noabs$Lfish_k <- round(as.numeric(mean_stats_noabs$Lfish_k), digits = 2)
+mean_stats_noabs$AgeLfish_AgeHalfsat <- round(as.numeric(mean_stats_noabs$AgeLfish_AgeHalfsat), digits = 2)
+
+# add theta calculations for open population, R = 50 to the data frame
+mean_stats_noabs <- left_join(mean_stats_noabs, openpop_theta, by = "species")
+mean_stats_noabs$species  <- with(mean_stats_noabs, reorder(species, M))
+mean_stats_noabs <- mean_stats_noabs %>% mutate(., theta_degrees = theta *(180/pi))
+```
+ggplots of life history characteristics versus bias and standard deviation
+```{r noabs_value_plots}
+#k
+Fest_noabs_kgg <- ggplot(data = mean_stats_noabs, aes(k_mean, F_est_mean))
+Fest_noabs_kgg <- Fest_noabs_kgg + geom_point(aes(color = species), size = 4) + labs(x="k", y = "Bias") + geom_hline(aes(yintercept=0), linetype = "dashed") + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) 
+
+#For only F=0.1
+Fest_noabs_kgg_F01 <- ggplot(data = mean_stats_noabs, aes(k, F_est))
+Fest_noabs_kgg_F01 <- Fest_noabs_kgg_F01 + geom_point(aes(color = species), size = 4) + labs(x="k", y = "Bias") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+Fest_std_kgg_F01 <- ggplot(data = sd_stats, aes(k, F_est))
+Fest_std_kgg_F01 <- Fest_std_kgg_F01 + geom_point(aes(color = species), size = 4) + labs(x="k", y = "Standard error") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+## If want to have dots for F_est bias
+#Combined for F=0.1
+Fest_noabs_true_F01<- Fest_noabs_true %>% filter(F_values == "0.1")
+Fest_noabs_true_F01 <- left_join(Fest_noabs_true_F01, openpop_theta, by = "species")
+Fest_noabs_true_F01$species  <- with(Fest_noabs_true_F01, reorder(species, M))
+Fest_noabs_true_Mgg_F01 <- ggplot(data = Fest_noabs_true_F01, aes(M, F_est))
+Fest_noabs_true_Mgg_F01 <- Fest_noabs_true_Mgg_F01 + geom_point(aes(color = species), size = 4) + labs(x="Natural mortality", y = "F estimate") + geom_hline(aes(yintercept=0.1), linetype = "dashed") + geom_errorbar(aes(ymin=F_est-F_est_std, ymax=F_est+F_est_std), width=.02)  
+
+#M
+Fest_noabs_Mgg <- ggplot(data = mean_stats_noabs, aes(M, F_est))
+Fest_noabs_Mgg <- Fest_noabs_Mgg + geom_point(aes(color = species), size = 4) + labs(x=expression(paste("Natural mortality rate (", y^-1, ")")), y = "Bias") + geom_hline(aes(yintercept=0), linetype = "dashed") + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) + theme(legend.title=element_blank())
+
+#For only F=0.1
+Fest_noabs_Mgg_F01 <- ggplot(data = mean_stats_noabs, aes(M, F_est, color = species))
+Fest_noabs_Mgg_F01 <- Fest_noabs_Mgg_F01 + 
+  geom_point(size = 4) + 
+  geom_smooth(method = lm, color = "black") + 
+  labs(x=expression(paste("Natural mortality rate (", y^-1, ")")), y = "Bias") + 
+  geom_hline(aes(yintercept=0), linetype = "dashed") +
+  theme(legend.title=element_blank()) +
+  scale_color_manual(values = pal(17))
+
+Fest_std_Mgg_F01 <- ggplot(data = sd_stats, aes(M, F_est, color = species))
+Fest_std_Mgg_F01 <- Fest_std_Mgg_F01 + 
+  geom_point(size = 4) +  
+  geom_smooth(method = lm, color = "black") + 
+  labs(x=expression(paste("Natural mortality rate (", y^-1, ")")), y = "Standard deviation") + 
+  theme(legend.title=element_blank()) +
+  scale_color_manual(values = pal(17))
+
+Fest_noabs_Lgg <- ggplot(data = mean_stats_noabs, aes(Lfish_Linf, F_est))
+Fest_noabs_Lgg <- Fest_noabs_Lgg + geom_point(aes(color = species), size = 4) + labs(x="Lfish_Linf", y = "Bias") + geom_hline(aes(yintercept=0), linetype = "dashed") + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) 
+
+#For only F=0.1
+Fest_noabs_Lgg_F01 <- ggplot(data = mean_stats_noabs, aes(Lfish_Linf, F_est))
+Fest_noabs_Lgg_F01 <- Fest_noabs_Lgg_F01 + geom_point(aes(color = species), size = 4) + labs(x=expression(paste("Lfish/", "L"[inf])), y = "Bias") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+Fest_std_Lgg_F01 <- ggplot(data = sd_stats, aes(Lfish_Linf, F_est))
+Fest_std_Lgg_F01 <- Fest_std_Lgg_F01 + geom_point(aes(color = species), size = 4) + labs(x="Lfish/Linf", y = "Standard deviation") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+Fest_noabs_k_Mgg <- ggplot(data = mean_stats_noabs, aes(k_M, F_est))
+Fest_noabs_k_Mgg <- Fest_noabs_k_Mgg + geom_point(aes(color = species), size = 4) + labs(x="k/M", y = "Bias (not absolute)") + geom_hline(aes(yintercept=0), linetype = "dashed") + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) 
+
+#For only F=0.1
+Fest_noabs_k_Mgg_F01 <- ggplot(data = mean_stats_noabs, aes(k_M, F_est))
+Fest_noabs_k_Mgg_F01 <- Fest_noabs_k_Mgg_F01 + geom_point(aes(color = species), size = 4) + geom_smooth(method = lm) + labs(x="k/M", y = "Bias") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+#linear regression equation
+lm_eqn = function(m) {
+  l <- list(a = format(coef(m)[1], digits = 2),
+      b = format(abs(coef(m)[2]), digits = 2),
+      r2 = format(summary(m)$r.squared, digits = 3));
+  if (coef(m)[2] >= 0)  {
+    eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2,l)
+  } else {
+    eq <- substitute(italic(y) == a - b %.% italic(x)*","~~italic(r)^2~"="~r2,l)    
+  }
+  as.character(as.expression(eq));                 
+}
+
+p1 = p + geom_text(aes(x = 25, y = 300, label = lm_eqn(lm(y ~ x, df))), parse = TRUE)
+
+Fest_std_k_Mgg_F01 <- ggplot(data = sd_stats, aes(k_M, F_est))
+Fest_std_k_Mgg_F01 <- Fest_std_k_Mgg_F01 + geom_point(aes(color = species), size = 4) + geom_smooth(method = lm) + labs(x="k/M", y = "Standard error") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+Fest_noabs_Lfish_Lmatgg <- ggplot(data = mean_stats_noabs, aes(Lfish_Lmat, F_est))
+Fest_noabs_Lfish_Lmatgg <- Fest_noabs_Lfish_Lmatgg + 
+  geom_point(aes(color = species), size = 4) + 
+  labs(x="Lfish/Lmat", y = "Bias") + 
+  geom_hline(aes(yintercept=0), linetype = "dashed") + 
+  geom_smooth(method = lm, color = "black") + 
+  geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) + 
+  theme(legend.title=element_blank())
+
+#For only F=0.1 - bias and sd (df = sd_stats) 
+Fest_noabs_Lfish_Lmatgg_F01 <- ggplot(data = mean_stats_noabs, aes(Lfish_Lmat, F_est))
+Fest_noabs_Lfish_Lmatgg_F01 <- Fest_noabs_Lfish_Lmatgg_F01 + geom_point(aes(color = species), size = 4) + 
+  geom_smooth(method = lm, color = "black") + 
+  labs(x="Length at first harvest/length at maturity", y = "Bias") + 
+  geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+Fest_sd_Lfish_Lmatgg_F01 <- ggplot(data = sd_stats, aes(Lfish_Lmat, F_est))
+Fest_sd_Lfish_Lmatgg_F01 <- Fest_sd_Lfish_Lmatgg_F01 + geom_point(aes(color = species), size = 4) + labs(x="Length at first harvest/length at maturity", y = "Standard deviation") + geom_smooth(method = lm, color = "black") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+#Lfish/k - bias and sd for F=0.1 only
+Fest_noabs_Lfish_k_F01 <- ggplot(data = mean_stats_noabs, aes(Lfish_k, F_est))
+Fest_noabs_Lfish_k_F01 <- Fest_noabs_Lfish_k_F01 + geom_point(aes(color = species), size = 4) + labs(x="Lfish/k", y = "Bias (not absolute)") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+Fest_sd_Lfish_k_F01 <- ggplot(data = sd_stats, aes(Lfish_k, F_est))
+Fest_sd_Lfish_k_F01 <- Fest_sd_Lfish_k_F01 + geom_point(aes(color = species), size = 4) + labs(x="Lfish/k", y = "Standard Error") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+#Age@enterfishery/Age@growthhalfsat - bias and sd for F=0.1 only
+Fest_noabs_AgeLfish_AgeHalfsat_F01 <- ggplot(data = mean_stats_noabs, aes(AgeLfish_AgeHalfsat, F_est))
+Fest_noabs_AgeLfish_AgeHalfsat_F01 <- Fest_noabs_AgeLfish_AgeHalfsat_F01 + geom_point(aes(color = species), size = 4) + labs(x="Age@Lfish/Age@Halfsat", y = "Bias (not absolute)") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+Fest_sd_AgeLfish_AgeHalfsat_F01 <- ggplot(data = sd_stats, aes(AgeLfish_AgeHalfsat_mean, F_est_mean))
+Fest_sd_AgeLfish_AgeHalfsat_F01 <- Fest_sd_AgeLfish_AgeHalfsat_F01 + geom_point(aes(color = species), size = 4) + labs(x="Age@Lfish/Age@Halfsat", y = "Standard error") + geom_hline(aes(yintercept=0), linetype = "dashed") 
+```
+ theta for no absolute value vs. bias and standard deviation, F = 0.1
+```{r theta}
+theta_sd <- sd_stats %>% filter(!is.na(theta_degrees)) #%>% arrange(., M)
+theta_sd$F_est_mean <- round(as.numeric(theta_sd$F_est), digits = 3)
+
+theta_sd_gg <- ggplot(data = sd_stats, aes(theta_degrees, F_est_mean)) +
+  geom_point(aes(color = species), size = 4) + 
+  labs(x = expression(paste("Angle of deviation from ", italic(v["1"]), " (", theta, "," , ~degree, ")")), y = "Standard deviation") + 
+  guides(colour = guide_legend(title = NULL)) + ylim(0, max(theta_sd$F_est_mean))
+
+theta_bias <- mean_stats_noabs %>% filter(!is.na(theta_degrees))
+theta_bias$F_est_mean <- round(as.numeric(theta_bias$F_est), digits = 2)
+
+theta_bias_gg <- ggplot(data = theta_bias, aes(theta_degrees, F_est_mean)) +
+  geom_point(aes(color = species), size = 4) + 
+  labs(x = expression(paste("Angle of deviation from ", italic(v["1"]), " (", theta, "," , ~degree, ")")), y = "Bias") + 
+  geom_hline(aes(yintercept=0), linetype = "dashed") 
+
+theta <- plot_grid(theta_bias_gg + theme(legend.position = "none"), theta_sd_gg + 
+    theme(legend.position = "none"), labels = c("a)", "b)"), align = 'vh',
+           hjust = -1, nrow = 1) 
+
+legend <- get_legend(theta_sd_gg) 
+theta_legend <- plot_grid(theta + theme(plot.margin = unit(c(2,1,0,0), "cm")), legend, rel_widths = c(2, .4))
+
+save_plot("Fest_theta_3Aug2018.pdf", theta_legend,
+          ncol = 3, # we're saving a grid plot of 2 columns
+          nrow = 1, # and 2 rows
+          # each individual subplot should have an aspect ratio of 1.3
+          base_aspect_ratio = 0.9
+          )
+```
+###End of no absolute value analyses
+```{r k_L_ratiokM}
+mean_stats_kgg <- ggplot(data = mean_stats, aes(k_mean, F_est_mean))
+mean_stats_kgg <- mean_stats_kgg + geom_point(aes(color = species), size = 4) + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) + labs(x="k", y = "Bias")
+
+sd_stats_kgg <- ggplot(data = sd_stats, aes(k_mean, F_est_mean))
+sd_stats_kgg <- sd_stats_kgg + geom_point(aes(color = species), size = 4) + labs(x="k", y = "Standard Error") 
+
+mean_stats_Lgg <- ggplot(data = mean_stats, aes(Lfish_Linf_mean, F_est_mean))
+mean_stats_Lgg <- mean_stats_Lgg + geom_point(aes(color = species), size = 4) + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) + labs(x="Lfish/Linf", y = "Bias")
+
+sd_stats_Lgg <- ggplot(data = sd_stats, aes(Lfish_Linf_mean, F_est_mean))
+sd_stats_Lgg <- sd_stats_Lgg + geom_point(aes(color = species), size = 4) + labs(x="Lfish/Linf", y = "Standard error") 
+
+mean_stats_k_Mgg <- ggplot(data = mean_stats, aes(k_M_mean, F_est_mean))
+mean_stats_k_Mgg <- mean_stats_k_Mgg + geom_point(aes(color = species), size = 4) + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) + labs(x="k/M", y = "Bias")
+
+sd_stats_k_Mgg <- ggplot(data = sd_stats, aes(k_M_mean, F_est_mean))
+sd_stats_k_Mgg <- sd_stats_k_Mgg + geom_point(aes(color = species), size = 4) + labs(x="k/M", y = "Standard error") # 
+
+mean_stats_Mgg <- ggplot(data = mean_stats, aes(M_mean, F_est_mean))
+mean_stats_Mgg <- mean_stats_Mgg + geom_point(aes(color = species), size = 4) + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) + labs(x="Natural mortality rate (M/yr)", y = "Bias")
+
+sd_stats_Mgg <- ggplot(data = sd_stats, aes(M_mean, F_est_mean))
+sd_stats_Mgg <- sd_stats_Mgg + geom_point(aes(color = species), size = 4) + labs(x="Natural mortality rate (M/yr)", y = "Standard error") 
+
+mean_stats_maxagegg <- ggplot(data = mean_stats, aes(Max_age_mean, F_est_mean))
+mean_stats_maxagegg <- mean_stats_maxagegg + geom_point(aes(color = species), size = 4) + geom_errorbar(aes(ymin=F_est_mean-F_est_sd, ymax=F_est_mean+F_est_sd), width=.02) + labs(x="Maximum age", y = "Bias")
+
+sd_stats_maxagegg <- ggplot(data = sd_stats, aes(Max_age_mean, F_est_mean))
+sd_stats_maxagegg <- sd_stats_maxagegg + geom_point(aes(color = species), size =4) + labs(x="Maximum age", y = "Standard error") 
+
+#Combined for F=0.2 sample size (Fest_ss) and time series duration
+Fest_ss1<- Fest_ss %>% filter(F_values == "0.2") 
+Fest_ss1$F_est <- as.numeric(Fest_ss1$F_est)
+Fest_ss1$F_est_std <- as.numeric(Fest_ss1$F_est_std)
+ss <- ggplot(data = Fest_ss1, aes(sample_size, F_est, ymin = 0, ymax = 0.3))
+ss <- ss + geom_point(aes(color = species), size = 4) + labs(x="Sample size", y = "Fishing mortality rate (F/yr)") + geom_hline(aes(yintercept=0.2), linetype = "dashed") + geom_errorbar(aes(ymin=F_est-F_est_std, ymax=F_est+F_est_std), width=.02) 
+
+Fest_ts<- Fest_ss %>% filter(F_values == "0.1")
+Fest_ts$F_est <- as.numeric(Fest_ts$F_est)
+Fest_ts$F_est_std <- as.numeric(Fest_ts$F_est_std)
+
+ts <- ggplot(data = Fest_ts, aes(duration, F_est, ymin = 0, ymax = 0.4))
+ts <- ts + geom_point(aes(color = species), size = 4) + labs(x="Time series duration (yrs)", y = "Fishing mortality rate (F/yr)") + geom_hline(aes(yintercept=0.1), linetype = "dashed") + geom_errorbar(aes(ymin=F_est-F_est_std, ymax=F_est+F_est_std), width=.02)
+```
+
+```{r fig.width=8,fig.height=11}
+#Plots
+plot_grid(mean_stats_kgg, mean_stats_Lgg, mean_stats_Mgg, mean_stats_k_Mgg, labels = c("A", "B", "C", "D"), ncol = 2)
+```
+```{r fig.width=11,fig.height=8}
+plot_grid(sd_stats_kgg, sd_stats_Lgg, sd_stats_Mgg, sd_stats_k_Mgg, labels = c("A", "B", "C", "D"), ncol = 2)
+```
+```{r fig.width=8,fig.height=11}
+#No absolute value for bias
+plot_grid(Fest_noabs_kgg, Fest_noabs_Lgg, Fest_noabs_Mgg, Fest_noabs_k_Mgg, labels = c("A", "B", "C", "D"), ncol = 2)
+```
+```{r fig.width=11,fig.height=8}
+#No absolute value for bias F=0.1 only
+plot_grid(Fest_noabs_kgg_F01, Fest_noabs_Lgg_F01, Fest_noabs_Mgg_F01, Fest_noabs_k_Mgg_F01, labels = c("A", "B", "C", "D"), ncol = 2)
+```
+
+```{r fig.width=11,fig.height=8}
+plot_grid(Fest_std_kgg_F01, Fest_std_Lgg_F01, Fest_std_Mgg_F01, Fest_std_k_Mgg_F01, labels = c("A", "B", "C", "D"), ncol = 2)
+```
+```{r fig.width=11,fig.height=8}
+colourCount = length(unique(sd_stats$species))
+getPalette = colorRampPalette(brewer.pal(8, "RdBu"))
+
+Fest_noabs_Lfish_Lmatgg_F01 <- ggplot(data = mean_stats_noabs, aes(Lfish_Lmat, F_est))
+Fest_noabs_Lfish_Lmatgg_F01 <- Fest_noabs_Lfish_Lmatgg_F01 + geom_point(aes(color = species), size = 4) + 
+  geom_smooth(method = lm, color = "black") + 
+  labs(x="Length at first harvest/length at maturity", y = "Bias") + 
+  geom_hline(aes(yintercept=0), linetype = "dashed") +
+  scale_color_manual(values = getPalette(colourCount))
+
+Fest_sd_Lfish_Lmatgg_F01 <- ggplot(data = sd_stats, aes(Lfish_Lmat, F_est))
+Fest_sd_Lfish_Lmatgg_F01 <- Fest_sd_Lfish_Lmatgg_F01 + 
+  geom_point(aes(color = species), size = 4) + 
+  labs(x="Length at first harvest/length at maturity", y = "Standard deviation") + 
+  geom_smooth(method = lm, color = "black") + 
+  guides(colour = guide_legend(title = NULL)) + 
+  scale_color_manual(values = getPalette(colourCount))
+
+## color palette test ##
+
+Lfish_Lmat_F01 <- plot_grid(Fest_noabs_Lfish_Lmatgg_F01 + theme(legend.position = "none"), Fest_sd_Lfish_Lmatgg_F01 + 
+    theme(legend.position = "none"), labels = c("a)", "b)"), align = 'vh',
+           hjust = -1, nrow = 1) 
+
+legend_Lfish <- get_legend(Fest_sd_Lfish_Lmatgg_F01)#Fest_sd_Lfish_Lmatgg_F01
+Lfish_Lmat_F01_legend <- plot_grid(Lfish_Lmat_F01 + theme(plot.margin = unit(c(2,1,0,0), "cm")), legend_Lfish, rel_widths = c(2, .4))
+
+save_plot("Fest_Lfish_Lmat_F01_2Sep2018.pdf", Lfish_Lmat_F01_legend,
+          ncol = 3, # we're saving a grid plot of 2 columns
+          nrow = 1, # and 2 rows
+          # each individual subplot should have an aspect ratio of 0.85
+          base_aspect_ratio = 0.9
+          ) 
+```
+```{r fig.width=11,fig.height=8}
+Fest_noabs_Mgg_F01 <- ggplot(data = mean_stats_noabs, aes(M, F_est, color = species))
+Fest_noabs_Mgg_F01 <- Fest_noabs_Mgg_F01 + 
+  geom_point(size = 4) + 
+  geom_smooth(method = lm, color = "black") + 
+  labs(x=expression(paste("Natural mortality rate (", y^-1, ")")), y = "Bias") + 
+  geom_hline(aes(yintercept=0), linetype = "dashed") +
+  theme(legend.title=element_blank()) +
+  scale_color_manual(values = pal(17))
+
+Fest_std_Mgg_F01 <- ggplot(data = sd_stats, aes(M, F_est, color = species))
+Fest_std_Mgg_F01 <- Fest_std_Mgg_F01 + 
+  geom_point(size = 4) +  
+  geom_smooth(method = lm, color = "black") + 
+  labs(x=expression(paste("Natural mortality rate (", y^-1, ")")), y = "Standard deviation") + 
+  theme(legend.title=element_blank()) +
+  scale_color_manual(values = pal(17))
+
+Mgg_F01 <- plot_grid(Fest_noabs_Mgg_F01 + theme(legend.position = "none"), Fest_std_Mgg_F01 + 
+    theme(legend.position = "none"), labels = c("a)", "b)"), align = 'vh',
+           hjust = -1, nrow = 1) 
+
+legend_Mgg <- get_legend(Fest_std_Mgg_F01) 
+Mgg_F01_legend <- plot_grid(Mgg_F01 + theme(plot.margin = unit(c(2,1,0,0), "cm")), legend_Mgg, rel_widths = c(2, .4))
+
+save_plot("Fest_M_F01_1Sep2018.pdf", Mgg_F01_legend,
+          ncol = 3, # we're saving a grid plot of 2 columns
+          nrow = 1, # and 2 rows
+          # each individual subplot should have an aspect ratio of 0.85
+          base_aspect_ratio = 0.9
+          )
+```
+
+```{r fig.width=8,fig.height=11}
+plot_grid(Fest_noabs_AgeLfish_AgeHalfsat_F01, Fest_sd_AgeLfish_AgeHalfsat_F01, labels = c("A", "B"), ncol = 1)
+#plot grid of what seem to be important predictors of bias and stddev using 
+```

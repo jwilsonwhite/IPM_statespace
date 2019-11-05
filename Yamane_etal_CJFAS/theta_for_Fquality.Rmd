@@ -1,0 +1,107 @@
+---
+title: "openpop_metrics"
+author: "Katie Kaplan"
+date: "7/12/2018"
+output: html_document
+---
+Edited by Lauren Yamane
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(data.table)
+library(purrrlyr)
+library(purrr)
+```
+
+## R Markdown
+This is from Katie's MPApopulationmodels 1) openpop_time.R , 2) closedpop_metrics.R from: https://github.com/katherinekaplan/MPApopulationmodels/blob/master/R/
+Removed parts of code from hers that were NA to open population case. 
+
+```{r read_data}
+RF_parms <- read.csv("/R_stuff/R_Research/MPAs/RFparmsforMEGAFUNCTION_LY.csv")
+RF_parms2 <- RF_parms %>% select(-Species, -Lmat, -Fi.1) 
+
+tf <- as.list(RF_parms2$tf)
+maxage <- as.list(RF_parms2$maxage)
+#Lmat <- as.list(RF_parms2$Lmat)
+Lfish <- as.list(RF_parms2$Lfish)
+M <- as.list(RF_parms2$M)
+# Fi for fished pop before MPA is 0.1, Fi for unfished (post-MPA) pop is 0
+Fi <- as.list(RF_parms2$Fi)
+Linf <- as.list(RF_parms2$Linf)
+k <- as.list(RF_parms2$k)
+a0 <- as.list(RF_parms2$a0)
+pW <- as.list(RF_parms2$pW)
+qW <- as.list(RF_parms2$qW)
+R <- as.list(RF_parms2$R)
+
+parms_fished <- list(tf = tf, maxage = maxage, Lfish = Lfish, M = M, Fi = Fi, Linf = Linf, k = k, a0 = a0, pW = pW, qW = qW, R = R)
+```
+Also, refer to the 1979 Joel Cohen paper on the cumulative distance from an observed to a stable age structure (which describes how to calculate that value, D1 or D2, and the angle representing the similarity of initial conditions (fished state) to the unfished SAD (theta).
+```{r openpop_time}
+#1. Calculate the SADs of fished case and unfished case.  These will be used to calculate theta
+openpop_time = function(tf, maxage, M, Fi, Lfish, Linf, k, a0, pW, qW, R) { 
+  ##First step calculate the stable age distribution of the fished population
+  a_harv0=(log((Lfish-Linf)/-Linf)/-k)+a0   ##age fished back calculated from von-B eqn
+  agefish=round(a_harv0,digits=0) ##round age fished to integer
+  N0=rep(100,maxage) #Initial pop vector, start with 100 individual in each age class
+  N0[1]=R
+  s=exp(-M)#no fishing case
+  sf=exp(-(M+Fi)) ##fishing case
+  sfx=rep(sf,maxage-1)
+  sfx[1:(agefish-1)]=rep(s,(agefish-1))
+  sxs=rep(s,maxage-1) #Survival vector ##number of s is ageclasses-1
+  Nt = matrix(0,tf,maxage) #Initialize vector of population sizes with extra columns for spawners and recruitment before variability
+  Nt[1,] = N0 #Put in initial values
+  #set.seed(1) #Set the seed so that every simulation uses same random sequence
+  t<-1
+  ##Get deterministic equilibrium for fished state
+  for(t in 1:(tf-1)) {
+    Nt[t+1,1] = R#*(exp(sig_r*rnorm(1,mean=0, sd=1))) #Recruits after variability in column 1, rnorm to generate random number for 1 point (n=1)
+    Nt[t+1,2:(maxage)] = sfx*Nt[t,1:(maxage-1)] #Survivorship of each age class  in columns 2-10
+  }
+  ##Second step use that stable age distribution of the fished population as the starting vector
+  ##to determine the MPA effect
+  N.fished=Nt[tf,]##the stable age dist values from the fished state
+  return(N.fished)
+}
+
+# Determine the SAD for fished case, parms as named list
+parms_fished$N.fished <- parms_fished %>%
+  pmap(openpop_time)
+
+# To find the SAD (w1) for the unfished case
+Fi = rep(0,nrow(RF_parms2))
+Fi = as.list(Fi)
+
+parms_unfished <- list(tf = tf, maxage = maxage, Lfish = Lfish, M = M, Fi = Fi, Linf = Linf, k = k, a0 = a0, pW = pW, qW = qW, R = R)
+# Change N.fished in openpop_time function to N.unfished and re-run the openpop_time function.  Then run the code here:
+parms_unfished$N.unfished <- parms_unfished %>%
+  pmap(openpop_time)
+
+```
+```{r openpop_metrics}
+#2. Use fished and unfished SAD to calculate theta. 
+
+fished_SAD <- parms_fished$N.fished
+unfished_SAD <- parms_unfished$N.unfished
+
+# Equation for theta: theta=acos((N0%*%w1)/(sqrt(sum(N0^2))*sqrt(sum(w1^2))))
+theta_num <- map2(fished_SAD, unfished_SAD, `%*%`) 
+
+theta_denom_fished <- map2(fished_SAD, fished_SAD, `*`) %>% map(., compose(sqrt, sum, unlist)) # for compose: applies functions from right to left (i.e., unlist, then sum, then sqrt)
+theta_denom_unfished <- map2(unfished_SAD, unfished_SAD, `*`) %>% map(., compose(sqrt, sum, unlist)) 
+theta_denom <- map2(theta_denom_fished, theta_denom_unfished, `*`)
+
+theta <- map2(theta_num, theta_denom, `/`) %>% map(., acos)
+
+#openpop_metrics(maxage=25,Lmat=18,Lfish=25,M=0.2,Fi=0.17, Linf=37.8,k=0.23,a0=-0.7,pW=6.29e-06,qW=3.172, N.fished = parms$N.fished[[1]]) 
+
+species <- as.data.frame(RF_parms$Species)
+theta_dbl <- flatten_dbl(theta)
+openpop_theta <- bind_cols(species = species, theta = theta_dbl)
+names(openpop_theta)[1] <- c("species")
+
+### Now use openpop_theta in Fquality.Rmd ####
+```
+
