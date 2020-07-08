@@ -10,13 +10,35 @@ language: Matlab
 File descriptions:
 
 runme_IPM.m 
-Master script that calls all of the other files necessary to fit the model for a particular site and species
+Main script that calls all of the other files necessary to fit the model for a particular site and species
 
 IPM_parameters_ChannelIslands.m
 File with life history parameters for each fish species and settings for the SSIPM implementation
 
 read_PISCOdta_ChannelIslands.m
 Reads in the data in data/UCSB_to2017_noHeaders.csv and formats for use in the model
+
+The runme_IPM.m script calls a number of helper files also found in IPM_statespace from White et al. 2016:
+do_IPM.m (to run the IPM)
+kernmatSimp.m (generates the mesh kernel for IPM integration)
+mkkern.m (makes the IPM kernel)
+makeSimpVec (to make the Simpson vector for integration)
+rockfish_fit_pisco.m (fits the IPM to data using MCMC; calls do_IPM.m)
+IPM_histo (to convert count data into histogram)
+onto_ogive.m (creates data observation ogive for blue rockfish)
+
+postproc_pisco_rockfish_fit.m
+Performs post-processing on the MCMC chains.
+Also produces plots of fits of the model to data (like Fig S1 in the manuscript)
+
+plot_posterior_distributions.m
+Calls postproc_pisco_rockfish_fit.m to generate model-fit figures for each site/species combination
+
+plot_ChannelIslands_posteriors.m
+Generates Fig 2 in the ms, showing posterior distributions of F for each site/species
+
+human_name.m
+Converts PISCO codes into human-friendlier strings for plotting purposes
 
 
 
