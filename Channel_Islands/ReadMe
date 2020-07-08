@@ -1,12 +1,23 @@
 ReadMe for Channel Islands, CA, application of the state-space IPM
 
 This code was used in the analysis documented in 
-White JW, Yamane MT, Nickols KJ, Casell JE
+White JW, Yamane MT, Nickols KJ, Caselle JE
 "Analysis of fish population size structures confirms cessation of fishing in marine protected areas"
 
 primary author: will.white@oregonstate.edu
+language: Matlab
 
-Files descriptions:
+File descriptions:
+
+runme_IPM.m 
+Master script that calls all of the other files necessary to fit the model for a particular site and species
+
+IPM_parameters_ChannelIslands.m
+File with life history parameters for each fish species and settings for the SSIPM implementation
+
+read_PISCOdta_ChannelIslands.m
+Reads in the data in data/UCSB_to2017_noHeaders.csv and formats for use in the model
+
 
 
 
