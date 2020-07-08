@@ -40,6 +40,11 @@ Generates Fig 2 in the ms, showing posterior distributions of F for each site/sp
 human_name.m
 Converts PISCO codes into human-friendlier strings for plotting purposes
 
+data/UCSB_FISH_THROUGH_2017.csv
+data/UCSB_to2017_noHeaders.csv
+These are the raw data used in the study. The noHeaders version is easier to read into Matlab.
+See piscoweb.org for full metadata and details on data collection.
+
 
 
 
