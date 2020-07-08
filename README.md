@@ -7,6 +7,10 @@ Fitting state-space integral projection models to time series data.
 All code is written for Matlab.
 
 Forked code for specific projects are found in individual sub-repositories
+# Kimbro_etal_Oikos: Kimbro et al. (2019) Oikos
+# Nickols_etal_JApplEcol: Nickols et al. (2019) J Applied Ecology
+# Yamane_etal_CJFAS: Yamane et al. (in review) Canadian Journal of Fisheries and Aquatic Sciences
+# Channel_Islands: White et al. (in review), Channel Islands MPA study
 
 
 
