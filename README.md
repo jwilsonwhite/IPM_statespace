@@ -6,6 +6,12 @@ This is the code described in White et al., Ecological Applications (2016)
 Fitting state-space integral projection models to time series data.
 All code is written for Matlab.
 
+Forked code for specific projects are found in individual sub-repositories
+
+
+
+# Notes for the code in the main repo, associated with White et al. (2016)
+
 There are two runme files that are the primary wrappers for all the code.
 
 runme_IPM_mockdata.m calls all of the necessary files for running the simulated blue rockfish data fits reported in the manuscript.
@@ -25,5 +31,7 @@ Post-processing and figure-generating code includes:
 gridsize_figs.m
 mockdata_plots.m
 postproc_pisco_rockfish_fit.m
+
+
 
 
