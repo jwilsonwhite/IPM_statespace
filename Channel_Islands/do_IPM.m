@@ -1,10 +1,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Function to run the IPM
-function [L, Npred_out, Nact_out] = do_IPM(meshsize,x,dy, Sy,cand_vec,fixparm,Rfact,Rvec,data,T,Tpre,Ogive,Meta,NT,SiteName,pauseflag)
+function [L, Npred_out, Nact_out] = do_IPM(meshsize,x,dy, Sy,cand_vec,fixparm,Rfact,Rvec,data,T,Tpre,Ogive,Meta,NT,SiteName,pauseflag,SSflag)
 
 if ~exist('pauseflag','var')
-    pauseflag = false;
+    pauseflag = false; % pause to check results
 end
+
+if ~exist('SSflag','var')
+    SSflag = false; % do not do state-space steps
+end
+
 
 Symat= repmat(Sy(:)',[length(Sy),1]);
 
@@ -70,7 +75,7 @@ else
     N(:,1) = Meta.N_init.(SiteName).Npred(:,end);
 end
 
-
+if ~SSflag
 % Particle filter: (following Knape & deValpine 2012)
 % Generate Q particles (independent simulations of N):
 Nf = repmat(N,[1,1,Q]);
@@ -90,6 +95,7 @@ Nf(:,1,:) = Nf(:,1,Ind); % replace with resampled values
 
 Ind2 = randperm(Q,1);
 N(:,1) = Nf(:,1,Ind2); % pick one randomly to be *the* distribution to carry forward to the next step
+end % end SSflag
 
 for t = 2:length(T)
     
@@ -99,6 +105,7 @@ for t = 2:length(T)
     % Simpson's integration:
     kmat = Symat.*kmat;
     
+    if ~SSflag % if doing the state-space step
    % Advance the model, one particle at a time
     Nrand = normrnd(0,sigma_p,size(Nf(:,t-1,:))); % process error
     RR = Rvec*R(t);
@@ -106,6 +113,7 @@ for t = 2:length(T)
         Nf(:,t,q) = kmat*Nf(:,t-1,q) + RR + Nrand(:,:,q);  % Eq 2 from White et al. PLoS ONE
     end
 
+    
 	Nf(:,t,:) = max(0,Nf(:,t,:)); % constrain to non-negative values
    
     % Weights:
@@ -134,6 +142,11 @@ for t = 2:length(T)
     Nf(:,t,:) = Nf(:,t,Ind); % replace with resampled values
     Ind2 = randperm(Q,1);
     N(:,t) = Nf(:,t,Ind2);
+    else % if not doing state-space
+        RR = Rvec*R(t);
+        N(:,t) = max(0,kmat*N(:,t-1) + RR + normrnd(0,sigma_p*1e3,size(N(:,t-1))));
+    end
+        
 end
 
 
@@ -141,7 +154,11 @@ if pauseflag
     keyboard
 end
 
+if SSflag
+    L = NaN;
+else
 L = nansum(mean(ftmp,1));
+end
 
 %also output the last month's fit
 if exist('Nact','var')

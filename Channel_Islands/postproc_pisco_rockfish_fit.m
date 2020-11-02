@@ -15,6 +15,8 @@ Plotfinal = true;
 saveplots = true;
 Plothisto = false;
 
+PPn = 1e2; % number of draws from posterior predictive
+
 % Choose the directory to be used, depending on what type of run is
 % analyzed
 %Dir ='runs_for_publication_pre2007_July2015/';
@@ -27,7 +29,8 @@ load(Meta_savename,'Meta')
 load(Meta.data_savename,'D_str','Species_Names','Years','Site_Names')
 
 plot_savename = Meta.fit_savename(1:end-4); % trim off '.mat'
-timeseries_plotname = strcat('Timeseries_plots_March2020/',plot_savename,'.eps');
+timeseries_plotname = strcat('Timeseries_plots_Sept2020/',plot_savename,'.eps');
+ppcheck_plotname = strcat('Posteriorpredictive_plots_Sept2020/',plot_savename,'.eps');
 F_histo_plotname = strcat(plot_savename,'_F_posterior_histo.eps');
 mcmc_plotname = strcat(plot_savename,'_MCMC.eps');
 
@@ -149,8 +152,18 @@ else
     % The vector 'Burn' should have the same length as the number of
     % chains, and each entry should be the desired amount of burn-in, based
     % on the diagnostic plots and Rhat calculation.
-    
-    Burn = [7e3 7e3 7e3];
+    % A single value worked for most sites, a few required some adjustment
+    if strcmp(Species_Names{1},'SMYS') && strcmp(Site_Names{1},'SCI_HAZARDS')
+        Burn = [1e3 1e3 1e3];
+    elseif strcmp(Species_Names{1},'SPUL') && strcmp(Site_Names{1},'ANACAPA_WEST_ISLE')
+    Burn = [1e4+1 1e4+1 1e3];
+    elseif strcmp(Species_Names{1},'SPUL') && strcmp(Site_Names{1},'SRI_JOHNSONS_LEE_SOUTH')
+    Burn = [7e3 7e3 1e4+1];
+    elseif strcmp(Species_Names{1},'PCLA') && strcmp(Site_Names{1},'ANACAPA_WEST_ISLE')
+    Burn = [5e3 5e3 1e4+1];
+    else
+    Burn = [5e3 5e3 5e3];
+    end
 end
 
 Col = {'r','b','k'};
@@ -193,7 +206,7 @@ if Plotfinal
    end
    meanP=mean(Pvec(1:end,:));
    
-   Rhat = sqrt(var(Lvec)/mean(vLwithin));
+   Rhat = sqrt(var(Lvec)/mean(vLwithin))
    if Rhat > 1.1 % there might be a convergence problem
        warning('Rhat > 1.1. Check chains for convergence.')
    end
@@ -213,9 +226,20 @@ if Plotfinal
        meanP_tmp = meanP;
        meanP_tmp(1:2) = meanP_tmp(1:2).*(1-Meta.MPAstatus(s)); 
         
-   [L(s), Npred, Nact] = do_IPM(meshsize,x,dy,Sy,meanP_tmp,Meta.fixparm,Rfact,R,squeeze(N(:,s,:)),T,Tpre,Ogive,Meta,NT(s,:),Site_Names{s});
+       % Calculate posterior predictive distribution
+       %%%%%%%
+       %%% NEEDS TO BE RUN WITHOUT DATA-FITTING
+       %%% THEN COMPARE DISTRIBUTIONS TO THE DATA FITTING
+       Pdist = Pvec(randsample(size(Pvec,1),PPn,'true'),:);
+       Pdist = Pdist .* (1-Meta.MPAstatus(s));
+       
+       for i = 1:size(Pdist,1)
+   [~, Npreddist(:,:,i)] = do_IPM(meshsize,x,dy,Sy,Pdist(i,:),Meta.fixparm,Rfact,R,squeeze(N(:,s,:)),T,Tpre,Ogive,Meta,NT(s,:),Site_Names{s},0,1);
+       end
+          [L(s), Npred, Nact] = do_IPM(meshsize,x,dy,Sy,meanP_tmp,Meta.fixparm,Rfact,R,squeeze(N(:,s,:)),T,Tpre,Ogive,Meta,NT(s,:),Site_Names{s});
 
    Predicted(1).(Site_Names{s}).Npred = Npred;
+   Predicted(1).(Site_Names{s}).Npreddist = Npreddist;
    Predicted(1).(Site_Names{s}).Likelihood = L;
    
    NumY = length(Years); % how many years to plot
@@ -231,7 +255,7 @@ if Plotfinal
    
    if any(PlotSites==s) % if we are in one of the sites to be plotted
        for y = 1:NumY
-       
+           figure(2)
            subplot(length(Panel(:))/2,2,Panel(PanelAddress(y)))
            hold on
            
@@ -261,9 +285,17 @@ if Plotfinal
                % plot(xt-diff(xt(1:2)/2),Npred2,'ko')
            end
            
+           % Posterior predictive distribution:
+          % keyboard
+               Npred_low = quantile(Npreddist,0.25,3);
+               Npred_high = quantile(Npreddist,0.75,3);
+           
            % Plot the raw density:
            if ~isnan(Nact(1,Years(y)))
            plot(x,Npred(:,Years(y)).*NT(s,Years(y)-length(Tpre)),'k','linewidth',1) 
+           plot(x,Npred_low(:,Years(y)).*NT(s,Years(y)-length(Tpre)),'k--','linewidth',1) 
+           plot(x,Npred_high(:,Years(y)).*NT(s,Years(y)-length(Tpre)),'k--','linewidth',1) 
+
            YL(y,:) = get(gca,'ylim');
            else
            ylim([0 1])
@@ -287,14 +319,14 @@ if Plotfinal
           % subplot(NumY,length(PlotSites),Panel(y,find(PlotSites==s)))
        %    set(gca,'ylim',[0 Ylm])
          if ~isnan(Nact(1,Years(y)))
-           text(2,YL(y,2)*0.9,num2str(Years(y)+1990),'fontsize',FS)
+           text(52,YL(y,2)*0.9,num2str(Years(y)+1990),'fontsize',FS)
          else
-           text(2,0.9,num2str(Years(y)+1990),'fontsize',FS)
+           text(52,0.9,num2str(Years(y)+1990),'fontsize',FS)
          end
        end
        
        % Label bottom x-axis
-       subplot(length(Panel(:))/2,2,Panel(PanelAddress(end)))
+       subplot(length(Panel(:))/2,2,Panel(PanelAddress(end-1)))
        xlabel('Length (cm)','fontsize',FS_title)
        subplot(length(Panel(:))/2,2,Panel(PanelAddress(8)))
        xlabel('Length (cm)','fontsize',FS_title)
@@ -315,7 +347,89 @@ if Plotfinal
        if saveplots
            print(timeseries_plotname,'-depsc2','-tiff')
        end
+       
+       % Plot posterior predictive as well
+       figure(3)
+       set(gcf,'units','cent','position',[5,5,18,18])
+       clf
+       
+       %keyboard
+     %  Psum = squeeze(sum(Npreddist(x>=Meta.fixparm(5),:,:),1));
+     %  Nsum = sum(Nact(x>=Meta.fixparm(5),:));
+      
+   %   Psum = squeeze(sum(Npreddist(x>=10,:,:),1));
+    %  Nsum = sum(Nact(x>=10,:));
+    
+   % Psum = squeeze(sum(Npreddist(:,:,:).*repmat(x(:),[1,size(Npreddist,2),size(Npreddist,3)]),1))...
+   %     ./squeeze(sum(Npreddist(:,:,:)));
+    
+   % Nsum = sum(Nact.*repmat(x(:),[1,size(Nact,2)]))./sum(Nact);
+    Len = x>=10;
+    Len = Len(:);
+    x = x(:);
+    Psum = squeeze(sum(Npreddist(Len,:,:).*repmat(x(Len),[1,size(Npreddist,2),size(Npreddist,3)]),1))...
+        ./squeeze(sum(Npreddist(Len,:,:)));
+    
+    Nsum = sum(Nact(Len,:).*repmat(x(Len),[1,size(Nact,2)]))./sum(Nact(Len,:));
+    
+ %   keyboard
+    
+       
+      for y = 1:NumY
+           subplot(length(Panel(:))/2,2,Panel(PanelAddress(y)))
+           
+       hold on
+       if ~isnan(Nact(1,Years(y)))
+    %   histogram(squeeze(Psum(Years(y),:)*NT(s,Years(y)-length(Tpre))),'Normalization','probability')
+       histogram(squeeze(Psum(Years(y),:)),'Normalization','probability')
+       plot([Nsum(Years(y)) Nsum(Years(y))],[0 1],'r-')
+       
+       end
+       
+
+       set(gca,'tickdir','out','ticklength',[0.015 0.015],'fontsize',FS)
+       set(gca,'xlim',[0 60])
+       set(gca,'ylim',[0 0.5])
+       
+      end
+      
+      for y = 1:NumY
+           subplot(length(Panel(:))/2,2,Panel(PanelAddress(y)))
+         
+         if ~isnan(Nact(1,Years(y)))
+           text(52,0.45,num2str(Years(y)+1990),'fontsize',FS)
+         else
+           text(52,0.45,num2str(Years(y)+1990),'fontsize',FS)
+         end
+      end
+       
+       
+
+      
+       % Label bottom x-axis
+       subplot(length(Panel(:))/2,2,Panel(PanelAddress(end-1)))
+       xlabel('Mean length (cm)','fontsize',FS_title)
+       subplot(length(Panel(:))/2,2,Panel(PanelAddress(8)))
+       xlabel('Mean length (cm)','fontsize',FS_title)
+       
+       % Label y-axis
+       subplot(length(Panel(:))/2,2,7)
+       ylabel('Frequency','fontsize',FS_title)
+       
+       
+       % Title top panel
+       subplot(length(Panel(:))/2,2,1)
+    %   title(plot_title,'fontsize',FS_title)
+    title(strcat(Spname_human,' : '),'fontsize',FS_title)
+    subplot(length(Panel(:))/2,2,2)
+    title(Sitename_human,'fontsize',FS_title)
+      
+     if saveplots
+           print(ppcheck_plotname,'-depsc2','-tiff')
+       end
+       
    end % end if PlotSites
+   
    
    end % end loop over sites
 end % end if Plotfinal 

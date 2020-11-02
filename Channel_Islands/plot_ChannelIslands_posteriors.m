@@ -17,6 +17,7 @@ isMPA = [0 0 1 0  1 0 0 1 0 1 0 0 0 1 1 1 1 1 0];
 Species = {'SATR','SMYS','SPUL','PCLA'};
 
 Priors = [0.07, 0.03, 0.08, 0.1]; % priors on F
+Priors_sd = [1.0, 1.0, 0.23, 1.0]; % sds on priors
 
 % Which species to plot for each site?
 doSpecies = [1 1 1 0 1 1 1 0 1 1 0 0 1 0 0 0 0 0 0; % SATR
@@ -79,12 +80,15 @@ set(gcf,'units','cent','position',[10 10 21 9])
 bins = linspace(eps,4,1e3); % bins for histogram
 
 for p = 1:length(Species)
-for s = 1:length(Sites)
-    Site_human{s} = human_name(Sites{s});
+for s = 1:(length(Sites)+1)
+   
     
     subplot(2,2,p)
     hold on
     
+    if s <= length(Sites) % for plotting the posteriors
+        
+         Site_human{s} = human_name(Sites{s});
     % plot posterior + mean
         if doSpecies(p,s)
         % Box to outline the MPA
@@ -110,35 +114,30 @@ for s = 1:length(Sites)
         plot(Midpoints,Values + s-0.3,'k')
         fill(Midpoints,Values + s-0.3,[0.5 0.5 0.5])
         
-        try
-      %  [Ks,xi] = ksdensity(Counts,'Support',[0 Inf]);
-        catch
-        %    keyboard
-        end
         
-     %   plot(xi,Ks+s,'k')
-        
-      %  plot(repmat(xcoord,length(F),1)+(rand(length(F),1)-0.5)/10,F,'ko','markersize',5,'markeredgecolor',Colors(p,:));
         plot([median(F),median(F)],[s-0.3 s+0.3],'color',[1 1 1],'linewidth',2)
-        
-     %   plot([Priors(p),Priors(p)],[s-0.3 s+0.3],'k:')
-        
+                
         else
             % Plot a ND if no data for that species/site
          %   text(0,s,'ND')
             
         end % end if doSpecies
         
-      %  if p == 1 && s == 9
-     %       keyboard
-     %   end
+    else % Plot the prior
+        Site_human{s} = 'Prior';
+        x = linspace(0,2,1e3);
+        Pf = normpdf(log(x),log(Priors(p)),Priors_sd(p));
+        plot(x,Pf,'k');
+        fill(x,Pf,[0.5,0.5,0.5])
         
-       
+        
+    end % end plotting posterior vs. prior
+               
         
     end % end Sites
     xlim([-0.2 1.7])
     ylim([-0.4 length(Sites)+0.4])
-    set(gca,'ytick',1:length(Sites),'yticklabels',Site_human)
+    set(gca,'ytick',1:(length(Sites)+1),'yticklabels',Site_human)
     set(gca,'xcolor','k','ycolor','k','tickdir','out','ticklength',[0.015 0.015])
     set(gca,'xgrid','on')
 
