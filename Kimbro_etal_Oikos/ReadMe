@@ -1,3 +1,6 @@
 Code to implement the state-space integral projection model in Kimbro et al. (2019) Oikos 128:584-595
 
 This sub-repo was forked from the main state-space IPM project described in White et al. (2016); the documentation for that code is more extensive and cleaner.
+
+The primary wrapper file is runme_IPM_Tomales.m; that file calls most of the other bits of code to execute the model. 
+
