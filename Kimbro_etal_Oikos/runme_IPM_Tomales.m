@@ -1,23 +1,14 @@
 function runme_IPM_Tomales(Modelstart,Modelstop,Cluster)
-% Run CC IPM model
 
 % This file describes all the code needed to run the IPM model for Tomales
-% oyster data.
+% oyster data. This code was modified from that in White et al. (2016)
+% Ecological Applications, so there are some legacy features that were
+% necessary for that implementation that are not used here.
 
 % The following structure file (Meta) will be associated with particular runs and
 % keep track of the various filenames, species, sites, etc. used in
 % particular runs.  This way you only need to tell each set of code which
 % metadata file to use.
-
-%%%%% UPDATE Jan 2018:
-% The model is kind of fucked wrt to the census timing. In model, assume
-% survey happens after that year's recruitment. In reality, survey is in
-% spring, recruitment in summer/fall. 
-% Not a huge deal bc recruitment is mostly zeros, but would be good to fix
-% it? Mostly important to 2007-2009 when there was actually recruitment.
-% e.g. big pulse in late 2008 should maybe actually enter as 2009? Or add
-% recruitment after doing comparison to data...but then have to multiply
-% recruit vector by a modified kernel...
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -30,7 +21,7 @@ Model_str = define_model_types;
 Meta.T = 1:10; % full # years for model
 Meta.Tdatafull = 5:10; % full timespan of data
 Meta.Tpre =   1:4; % time prior to data that model will run
-Meta.Tdata =  [5 6 7 10]; % years with data before MLPA MPAs      
+Meta.Tdata =  [5 6 7 10]; % years with data       
     
 % Sites: 
 Meta.Sites = {'E1','E2','E3','E4','W2','W3','W4'}; % cell array.  Insert NaN if you want all the sites
